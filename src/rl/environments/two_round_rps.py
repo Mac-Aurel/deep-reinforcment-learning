@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 
@@ -123,7 +123,7 @@ class TwoRoundRPSEnv(ExploringStartsEnvironment, MDPEnvironment):
     # Round 2 (états 1 à 3) : l'adversaire est connu (forcé), donc l'issue
     # est déterministe, et l'état suivant est toujours l'état terminal (4).
     def transition_probability(self, s: int, a: int, s_p: int, r_index: int) -> float:
-        if s in self.terminal_states():
+        if s == 4:
             return 0.0
 
         if s == 0:

@@ -88,7 +88,7 @@ class LineWorldEnv(ExploringStartsEnvironment, MDPEnvironment):
     # sachant qu'on part de l'état s en jouant l'action a. Line World est déterministe :
     # cette probabilité vaut toujours 0 ou 1.
     def transition_probability(self, s: int, a: int, s_p: int, r_index: int) -> float:
-        if s in self.terminal_states():
+        if s == 0 or s == self.num_cells - 1:
             return 0.0
 
         if a == 0 and s_p == s - 1:

@@ -218,7 +218,7 @@ class MontyHallEnv(ExploringStartsEnvironment, MDPEnvironment):
         return np.array([self._terminal_state_id])
 
     def transition_probability(self, s: int, a: int, s_p: int, r_index: int) -> float:
-        if s in self.terminal_states():
+        if s == self._terminal_state_id:
             return 0.0
         if (s, a) not in self._transitions:
             return 0.0

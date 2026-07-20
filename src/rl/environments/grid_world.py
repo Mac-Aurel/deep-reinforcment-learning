@@ -113,7 +113,7 @@ class GridWorldEnv(ExploringStartsEnvironment, MDPEnvironment):
     # sachant qu'on part de l'état s en jouant l'action a. Grid World est
     # déterministe : cette probabilité vaut toujours 0 ou 1.
     def transition_probability(self, s: int, a: int, s_p: int, r_index: int) -> float:
-        if s in self.terminal_states():
+        if self._position(s) in (self.goal, self.trap):
             return 0.0
 
         row, col = self._position(s)
