@@ -42,6 +42,7 @@ def value_iteration(
     env: MDPEnvironment,
     gamma: float = 0.999999,
     theta: float = 0.000001,
+    max_iterations: int = 10_000,
 ) -> Tuple[np.ndarray, np.ndarray]:
     states = env.states()
     actions = env.actions()
@@ -51,7 +52,7 @@ def value_iteration(
     for s in terminal_states:
         V[s] = 0.0
 
-    while True:
+    for _ in range(max_iterations):
         delta = 0.0
         for s in states:
             if s in terminal_states:
@@ -69,18 +70,28 @@ def value_iteration(
 # Calcule la valeur de chaque état pour une politique `pi` fixée, en répétant
 # la mise à jour "moyenne pondérée par pi des actions" jusqu'à ce que V ne
 # bouge plus (delta < theta). Utilisé comme étape d'évaluation par Policy Iteration.
+#
+# `max_iterations` protège contre un cas piège : une politique candidate (en
+# particulier la politique initiale, tirée au hasard action par action) peut
+# faire boucler l'agent indéfiniment entre des états non terminaux (ex: état 1
+# -> état 2 -> état 1 -> ...), sans jamais atteindre de récompense. Avec un
+# gamma très proche de 1 (0.999999 par défaut), converger exactement en dessous
+# de theta sur ces états qui bouclent peut demander des millions de passes. La
+# politique n'a de toute façon aucune chance d'être optimale dans ce cas : la
+# borne évite l'attente et l'étape d'amélioration corrigera la politique ensuite.
 def _evaluate_policy(
     env: MDPEnvironment,
     pi: np.ndarray,
     V: np.ndarray,
     gamma: float,
     theta: float,
+    max_iterations: int = 10_000,
 ) -> None:
     states = env.states()
     actions = env.actions()
     terminal_states = set(env.terminal_states())
 
-    while True:
+    for _ in range(max_iterations):
         delta = 0.0
         for s in states:
             if s in terminal_states:
@@ -100,6 +111,7 @@ def policy_iteration(
     env: MDPEnvironment,
     gamma: float = 0.999999,
     theta: float = 0.000001,
+    max_evaluation_iterations: int = 10_000,
 ) -> Tuple[np.ndarray, np.ndarray]:
     states = env.states()
     actions = env.actions()
@@ -116,7 +128,7 @@ def policy_iteration(
         pi[s, np.random.randint(len(actions))] = 1.0
 
     while True:
-        _evaluate_policy(env, pi, V, gamma, theta)
+        _evaluate_policy(env, pi, V, gamma, theta, max_evaluation_iterations)
 
         policy_stable = True
         for s in states:
