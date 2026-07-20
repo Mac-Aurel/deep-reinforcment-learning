@@ -157,3 +157,81 @@ def on_policy_first_visit_monte_carlo_control(
         pi[s, :] = 0.0
 
     return pi, Q
+
+
+# Off-policy Monte Carlo Control : ici on sépare complètement la politique qui
+# joue les épisodes (la politique "de comportement", b, tirée uniformément au
+# hasard parmi les actions disponibles pour bien tout explorer) de la
+# politique que l'on cherche à évaluer et améliorer (la politique "cible",
+# gloutonne par rapport à Q). Comme les deux diffèrent, chaque retour observé
+# doit être repondéré par un ratio d'échantillonnage préférentiel (importance
+# sampling) W qui corrige le fait qu'on n'a pas joué avec la politique cible.
+# En partant de la fin de l'épisode, W part de 1 et se multiplie par
+# 1 / b(action jouée | état) à chaque pas ; dès que l'action jouée ne
+# correspond plus à l'action gloutonne actuelle (la politique cible n'aurait
+# pas joué ce coup-là), le reste de l'épisode (plus ancien) n'apporte plus
+# d'information utile sur la politique cible et on l'ignore.
+def off_policy_monte_carlo_control(
+    env: Environment,
+    iterations_count: int = 10_000,
+    gamma: float = 0.999999,
+    max_steps_per_episode: int = 1_000,
+) -> Tuple[np.ndarray, np.ndarray]:
+    num_states = env.num_states()
+    num_actions = env.num_actions()
+
+    Q = np.random.random((num_states, num_actions))
+    C = np.zeros((num_states, num_actions))
+    terminal_states_seen = set()
+
+    for _ in range(iterations_count):
+        env.reset()
+
+        trajectory_states = []
+        trajectory_actions = []
+        trajectory_rewards = []
+        trajectory_behavior_probs = []
+
+        # Même garde-fou que pour les deux autres méthodes Monte Carlo : si
+        # l'épisode ne termine pas dans cette limite, on l'abandonne plutôt
+        # que de tourner à l'infini.
+        steps = 0
+        while not env.is_game_over() and steps < max_steps_per_episode:
+            s = env.current_state()
+            available = env.available_actions()
+            a = int(np.random.choice(available))
+            prev_score = env.score()
+            env.step(a)
+            trajectory_states.append(s)
+            trajectory_actions.append(a)
+            trajectory_rewards.append(env.score() - prev_score)
+            trajectory_behavior_probs.append(1.0 / len(available))
+            if env.is_game_over():
+                terminal_states_seen.add(env.current_state())
+            steps += 1
+
+        if not env.is_game_over():
+            continue
+
+        G = 0.0
+        W = 1.0
+        for s, a, r, b_prob in zip(
+            reversed(trajectory_states),
+            reversed(trajectory_actions),
+            reversed(trajectory_rewards),
+            reversed(trajectory_behavior_probs),
+        ):
+            G = gamma * G + r
+            C[s, a] += W
+            Q[s, a] += (W / C[s, a]) * (G - Q[s, a])
+
+            if a != int(np.argmax(Q[s])):
+                break
+            W /= b_prob
+
+    pi = np.zeros((num_states, num_actions))
+    pi[np.arange(num_states), np.argmax(Q, axis=1)] = 1.0
+    for s in terminal_states_seen:
+        pi[s, :] = 0.0
+
+    return pi, Q
