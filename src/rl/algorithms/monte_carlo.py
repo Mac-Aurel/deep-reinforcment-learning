@@ -94,8 +94,7 @@ def monte_carlo_es(
             if (s, a) not in zip(trajectory_states[:t], trajectory_actions[:t]):
                 Q_counts[s, a] += 1
                 Q[s, a] += (G - Q[s, a]) / Q_counts[s, a]
-                best_index = int(np.argmax(Q[s, valid_actions[s]]))
-                greedy_action[s] = valid_actions[s][best_index]
+                greedy_action[s] = restricted_argmax(Q[s], valid_actions[s])
             t -= 1
 
     pi = np.zeros((num_states, num_actions))

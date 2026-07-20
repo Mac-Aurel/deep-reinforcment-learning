@@ -14,18 +14,28 @@ def epsilon_greedy_action(env: Environment, Q: np.ndarray, s: int, epsilon: floa
     available = env.available_actions()
     if np.random.random() < epsilon:
         return int(np.random.choice(available))
-    q_available = Q[s, available]
-    return int(available[int(np.argmax(q_available))])
+    return restricted_argmax(Q[s], available)
 
 
 # Certains environnements (ex: Monty Hall) n'offrent pas les mêmes actions
 # dans tous les états : Q(s, ·) peut donc contenir, pour des actions qui n'y
 # sont en réalité jamais jouables, une valeur d'initialisation aléatoire qui
-# n'a jamais été mise à jour. Ces deux fonctions restreignent le max/argmax
-# aux seules actions réellement disponibles, pour ne jamais s'y laisser
-# piéger.
+# n'a jamais été mise à jour. Cette fonction restreint donc l'argmax aux
+# seules actions réellement disponibles, pour ne jamais s'y laisser piéger.
+#
+# Les égalités sont départagées AU HASARD plutôt que de toujours prendre le
+# premier indice (comportement par défaut de np.argmax) : avec un gamma très
+# proche de 1, une action "boucle sur soi-même" (ex: taper un mur dans Grid
+# World) n'est presque jamais pénalisée par la mise à jour TD (sa cible
+# `r + gamma * Q(s, a)` est quasiment égale à sa valeur actuelle), donc si
+# elle gagne le départage dès le début (ex: toujours la première action
+# testée depuis l'état de départ), rien ne l'empêche jamais de continuer à
+# le gagner : l'agent resterait bloqué à répéter la même action inutile
+# indéfiniment. Départager au hasard suffit à casser ce blocage.
 def restricted_argmax(q_row: np.ndarray, available: List[int]) -> int:
-    return int(available[int(np.argmax(q_row[available]))])
+    q_available = q_row[available]
+    best_indices = np.flatnonzero(q_available == np.max(q_available))
+    return int(available[int(np.random.choice(best_indices))])
 
 
 def restricted_max(q_row: np.ndarray, available: List[int]) -> float:
