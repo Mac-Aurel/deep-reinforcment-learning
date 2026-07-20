@@ -64,3 +64,73 @@ def value_iteration(
 
     pi = _greedy_policy_from_v(env, V, gamma)
     return pi, V
+
+
+# Calcule la valeur de chaque état pour une politique `pi` fixée, en répétant
+# la mise à jour "moyenne pondérée par pi des actions" jusqu'à ce que V ne
+# bouge plus (delta < theta). Utilisé comme étape d'évaluation par Policy Iteration.
+def _evaluate_policy(
+    env: MDPEnvironment,
+    pi: np.ndarray,
+    V: np.ndarray,
+    gamma: float,
+    theta: float,
+) -> None:
+    states = env.states()
+    actions = env.actions()
+    terminal_states = set(env.terminal_states())
+
+    while True:
+        delta = 0.0
+        for s in states:
+            if s in terminal_states:
+                continue
+            v = V[s]
+            V[s] = sum(pi[s, a] * _action_value(env, s, a, V, gamma) for a in actions)
+            delta = max(delta, abs(v - V[s]))
+        if delta < theta:
+            break
+
+
+# Policy Iteration : alterne deux étapes jusqu'à ce que la politique ne change
+# plus. 1) Évaluation : calculer V pour la politique actuelle. 2) Amélioration :
+# rendre la politique gloutonne par rapport à ce V. Contrairement à Value
+# Iteration, chaque étape d'évaluation va jusqu'à convergence avant d'améliorer.
+def policy_iteration(
+    env: MDPEnvironment,
+    gamma: float = 0.999999,
+    theta: float = 0.000001,
+) -> Tuple[np.ndarray, np.ndarray]:
+    states = env.states()
+    actions = env.actions()
+    terminal_states = set(env.terminal_states())
+
+    V = np.random.random(len(states))
+    for s in terminal_states:
+        V[s] = 0.0
+
+    pi = np.zeros((len(states), len(actions)))
+    for s in states:
+        if s in terminal_states:
+            continue
+        pi[s, np.random.randint(len(actions))] = 1.0
+
+    while True:
+        _evaluate_policy(env, pi, V, gamma, theta)
+
+        policy_stable = True
+        for s in states:
+            if s in terminal_states:
+                continue
+            old_action = int(np.argmax(pi[s]))
+            action_values = [_action_value(env, s, a, V, gamma) for a in actions]
+            best_action = int(np.argmax(action_values))
+            pi[s, :] = 0.0
+            pi[s, best_action] = 1.0
+            if old_action != best_action:
+                policy_stable = False
+
+        if policy_stable:
+            break
+
+    return pi, V
