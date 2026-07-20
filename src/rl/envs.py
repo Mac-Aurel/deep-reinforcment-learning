@@ -59,6 +59,21 @@ class Environment(ABC):
         raise NotImplementedError
 
 
+class ExploringStartsEnvironment(Environment):
+    """
+    Interface complémentaire pour les environnements qui peuvent être placés
+    directement dans un état donné, plutôt que de toujours reprendre depuis
+    l'état de départ fixe de `reset()`. Nécessaire pour Monte Carlo ES, qui
+    doit pouvoir démarrer chaque épisode depuis une paire (état, action)
+    tirée au hasard afin de garantir que tous les états sont explorés.
+    """
+
+    # Place directement l'environnement dans l'état demandé (doit être un état non terminal).
+    @abstractmethod
+    def set_state(self, state: int) -> None:
+        raise NotImplementedError
+
+
 class MDPEnvironment(ABC):
     """
     Interface complémentaire pour les environnements dont on connaît le

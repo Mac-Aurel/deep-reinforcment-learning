@@ -2,13 +2,21 @@ import pytest
 
 from src.rl.algorithms.dynamic_programming import value_iteration
 from src.rl.environments.grid_world import DOWN, LEFT, RIGHT, UP, GridWorldEnv
-from src.rl.envs import Environment, MDPEnvironment
+from src.rl.envs import Environment, ExploringStartsEnvironment, MDPEnvironment
 
 
-def test_grid_world_implements_both_interfaces():
+def test_grid_world_implements_all_interfaces():
     env = GridWorldEnv()
     assert isinstance(env, Environment)
     assert isinstance(env, MDPEnvironment)
+    assert isinstance(env, ExploringStartsEnvironment)
+
+
+def test_set_state_moves_the_agent_directly():
+    env = GridWorldEnv(height=5, width=5)
+    env.set_state(7)
+    assert env.current_state() == 7
+    assert (env.row, env.col) == (1, 2)
 
 
 def test_reset_places_agent_top_left():

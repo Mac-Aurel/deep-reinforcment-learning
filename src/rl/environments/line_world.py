@@ -2,13 +2,13 @@ from typing import List
 
 import numpy as np
 
-from src.rl.envs import Environment, MDPEnvironment
+from src.rl.envs import ExploringStartsEnvironment, MDPEnvironment
 
 # Valeurs de récompense possibles : rien (0), sortir par la gauche (-1), sortir par la droite (+1).
 REWARDS = np.array([0.0, -1.0, 1.0])
 
 
-class LineWorldEnv(Environment, MDPEnvironment):
+class LineWorldEnv(ExploringStartsEnvironment, MDPEnvironment):
     """
     Reprend l'environnement Line World du notebook `notebooks/Line World
     Experiments.ipynb` : un agent se déplace sur une ligne de `num_cells`
@@ -61,6 +61,10 @@ class LineWorldEnv(Environment, MDPEnvironment):
 
     def num_actions(self) -> int:
         return 2
+
+    # Place directement l'agent sur la case demandée, sans jouer d'action (exploring starts).
+    def set_state(self, state: int) -> None:
+        self.agent_pos = state
 
     # Pretty print en ligne de commande : "X" pour la case de l'agent, "_" pour les autres.
     def display(self) -> None:

@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 import numpy as np
 
-from src.rl.envs import Environment, MDPEnvironment
+from src.rl.envs import ExploringStartsEnvironment, MDPEnvironment
 
 # Les 4 déplacements possibles.
 LEFT, RIGHT, UP, DOWN = 0, 1, 2, 3
@@ -11,7 +11,7 @@ LEFT, RIGHT, UP, DOWN = 0, 1, 2, 3
 REWARDS = np.array([0.0, -1.0, 1.0])
 
 
-class GridWorldEnv(Environment, MDPEnvironment):
+class GridWorldEnv(ExploringStartsEnvironment, MDPEnvironment):
     """
     Grille de `height` x `width` cases. L'agent part du coin en haut à
     gauche et doit atteindre la case objectif (récompense +1) tout en
@@ -75,6 +75,10 @@ class GridWorldEnv(Environment, MDPEnvironment):
 
     def num_actions(self) -> int:
         return 4
+
+    # Place directement l'agent sur la case demandée, sans jouer d'action (exploring starts).
+    def set_state(self, state: int) -> None:
+        self.row, self.col = divmod(state, self.width)
 
     # Pretty print en ligne de commande : "X" = agent, "G" = objectif, "T" = piège, "." = case vide.
     def display(self) -> None:

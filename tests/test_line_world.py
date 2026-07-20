@@ -1,13 +1,20 @@
 import pytest
 
 from src.rl.environments.line_world import LineWorldEnv
-from src.rl.envs import Environment, MDPEnvironment
+from src.rl.envs import Environment, ExploringStartsEnvironment, MDPEnvironment
 
 
-def test_line_world_implements_both_interfaces():
+def test_line_world_implements_all_interfaces():
     env = LineWorldEnv()
     assert isinstance(env, Environment)
     assert isinstance(env, MDPEnvironment)
+    assert isinstance(env, ExploringStartsEnvironment)
+
+
+def test_set_state_moves_the_agent_directly():
+    env = LineWorldEnv(num_cells=5)
+    env.set_state(3)
+    assert env.current_state() == 3
 
 
 def test_reset_places_agent_in_the_middle():
