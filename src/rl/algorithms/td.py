@@ -10,7 +10,7 @@ from src.rl.envs import Environment
 # probabilité epsilon une action au hasard parmi celles disponibles, pour
 # continuer à explorer plutôt que de s'enfermer trop vite dans un choix
 # sous-optimal.
-def _epsilon_greedy_action(env: Environment, Q: np.ndarray, s: int, epsilon: float) -> int:
+def epsilon_greedy_action(env: Environment, Q: np.ndarray, s: int, epsilon: float) -> int:
     available = env.available_actions()
     if np.random.random() < epsilon:
         return int(np.random.choice(available))
@@ -45,7 +45,7 @@ def sarsa(
     for _ in range(iterations_count):
         env.reset()
         s = env.current_state()
-        a = _epsilon_greedy_action(env, Q, s, epsilon)
+        a = epsilon_greedy_action(env, Q, s, epsilon)
 
         # Même garde-fou que pour les méthodes Monte Carlo : si la politique
         # courante boucle entre des états non terminaux, on abandonne
@@ -61,7 +61,7 @@ def sarsa(
                 terminal_states_seen.add(s_p)
                 Q[s, a] += alpha * (r - Q[s, a])
             else:
-                a_p = _epsilon_greedy_action(env, Q, s_p, epsilon)
+                a_p = epsilon_greedy_action(env, Q, s_p, epsilon)
                 Q[s, a] += alpha * (r + gamma * Q[s_p, a_p] - Q[s, a])
                 s, a = s_p, a_p
 
@@ -107,7 +107,7 @@ def q_learning(
         # abandonne l'épisode plutôt que de tourner à l'infini.
         steps = 0
         while not env.is_game_over() and steps < max_steps_per_episode:
-            a = _epsilon_greedy_action(env, Q, s, epsilon)
+            a = epsilon_greedy_action(env, Q, s, epsilon)
             prev_score = env.score()
             env.step(a)
             r = env.score() - prev_score
