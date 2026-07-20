@@ -1,7 +1,8 @@
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
+from src.rl.algorithms.td import build_greedy_policy, restricted_argmax
 from src.rl.envs import Environment, ExploringStartsEnvironment
 
 
@@ -32,8 +33,22 @@ def monte_carlo_es(
 
     Q = np.random.random((num_states, num_actions))
     Q_counts = np.zeros((num_states, num_actions))
-    greedy_action = np.random.randint(0, num_actions, size=num_states)
     terminal_states_seen = set()
+
+    # Certains environnements n'offrent pas les mêmes actions dans tous les
+    # états (ex: Monty Hall, où le tout premier choix porte sur bien plus
+    # d'options que les décisions "garder/changer" qui suivent) : on relève
+    # donc à l'avance les actions valides état par état, pour ne jamais
+    # piocher au hasard une action que l'environnement refuserait.
+    valid_actions = []
+    for s in range(num_states):
+        env.reset()
+        env.set_state(s)
+        valid_actions.append([] if env.is_game_over() else env.available_actions())
+
+    greedy_action = np.array(
+        [int(np.random.choice(valid_actions[s])) if valid_actions[s] else 0 for s in range(num_states)]
+    )
 
     for _ in range(iterations_count):
         # Exploring start : on retire un état au hasard jusqu'à en trouver un non terminal,
@@ -79,7 +94,8 @@ def monte_carlo_es(
             if (s, a) not in zip(trajectory_states[:t], trajectory_actions[:t]):
                 Q_counts[s, a] += 1
                 Q[s, a] += (G - Q[s, a]) / Q_counts[s, a]
-                greedy_action[s] = np.argmax(Q[s])
+                best_index = int(np.argmax(Q[s, valid_actions[s]]))
+                greedy_action[s] = valid_actions[s][best_index]
             t -= 1
 
     pi = np.zeros((num_states, num_actions))
@@ -112,7 +128,11 @@ def on_policy_first_visit_monte_carlo_control(
 
     Q = np.random.random((num_states, num_actions))
     Q_counts = np.zeros((num_states, num_actions))
-    pi = np.full((num_states, num_actions), 1.0 / num_actions)
+    # pi n'est initialisée qu'au fil de l'eau (voir plus bas) : certains
+    # environnements (ex: Monty Hall) n'offrent pas les mêmes actions dans
+    # tous les états, donc une distribution uniforme sur num_actions
+    # n'aurait pas de sens pour un état qui n'en propose que quelques-unes.
+    pi = np.zeros((num_states, num_actions))
     terminal_states_seen = set()
 
     for _ in range(iterations_count):
@@ -121,18 +141,24 @@ def on_policy_first_visit_monte_carlo_control(
         trajectory_states = []
         trajectory_actions = []
         trajectory_rewards = []
+        trajectory_available_actions = []
 
         # Même garde-fou que pour Monte Carlo ES : si l'épisode ne termine pas
         # dans cette limite, on l'abandonne plutôt que de tourner à l'infini.
         steps = 0
         while not env.is_game_over() and steps < max_steps_per_episode:
             s = env.current_state()
-            a = int(np.random.choice(env.available_actions(), p=pi[s]))
+            available = env.available_actions()
+            probs = pi[s, available]
+            probs = probs / probs.sum() if probs.sum() > 0 else np.full(len(available), 1.0 / len(available))
+            a = int(np.random.choice(available, p=probs))
+
             prev_score = env.score()
             env.step(a)
             trajectory_states.append(s)
             trajectory_actions.append(a)
             trajectory_rewards.append(env.score() - prev_score)
+            trajectory_available_actions.append(available)
             if env.is_game_over():
                 terminal_states_seen.add(env.current_state())
             steps += 1
@@ -142,15 +168,20 @@ def on_policy_first_visit_monte_carlo_control(
 
         G = 0.0
         t = len(trajectory_states) - 1
-        for s, a, r in zip(reversed(trajectory_states), reversed(trajectory_actions), reversed(trajectory_rewards)):
+        for s, a, r, available in zip(
+            reversed(trajectory_states),
+            reversed(trajectory_actions),
+            reversed(trajectory_rewards),
+            reversed(trajectory_available_actions),
+        ):
             G = gamma * G + r
             if (s, a) not in zip(trajectory_states[:t], trajectory_actions[:t]):
                 Q_counts[s, a] += 1
                 Q[s, a] += (G - Q[s, a]) / Q_counts[s, a]
 
-                best_a = int(np.argmax(Q[s]))
-                pi[s, :] = epsilon / num_actions
-                pi[s, best_a] = 1 - epsilon + epsilon / num_actions
+                best_a = restricted_argmax(Q[s], available)
+                pi[s, available] = epsilon / len(available)
+                pi[s, best_a] = 1 - epsilon + epsilon / len(available)
             t -= 1
 
     for s in terminal_states_seen:
@@ -183,6 +214,7 @@ def off_policy_monte_carlo_control(
     Q = np.random.random((num_states, num_actions))
     C = np.zeros((num_states, num_actions))
     terminal_states_seen = set()
+    known_available_actions: Dict[int, List[int]] = {}
 
     for _ in range(iterations_count):
         env.reset()
@@ -191,6 +223,7 @@ def off_policy_monte_carlo_control(
         trajectory_actions = []
         trajectory_rewards = []
         trajectory_behavior_probs = []
+        trajectory_available_actions = []
 
         # Même garde-fou que pour les deux autres méthodes Monte Carlo : si
         # l'épisode ne termine pas dans cette limite, on l'abandonne plutôt
@@ -199,6 +232,7 @@ def off_policy_monte_carlo_control(
         while not env.is_game_over() and steps < max_steps_per_episode:
             s = env.current_state()
             available = env.available_actions()
+            known_available_actions[s] = available
             a = int(np.random.choice(available))
             prev_score = env.score()
             env.step(a)
@@ -206,6 +240,7 @@ def off_policy_monte_carlo_control(
             trajectory_actions.append(a)
             trajectory_rewards.append(env.score() - prev_score)
             trajectory_behavior_probs.append(1.0 / len(available))
+            trajectory_available_actions.append(available)
             if env.is_game_over():
                 terminal_states_seen.add(env.current_state())
             steps += 1
@@ -215,22 +250,22 @@ def off_policy_monte_carlo_control(
 
         G = 0.0
         W = 1.0
-        for s, a, r, b_prob in zip(
+        for s, a, r, b_prob, available in zip(
             reversed(trajectory_states),
             reversed(trajectory_actions),
             reversed(trajectory_rewards),
             reversed(trajectory_behavior_probs),
+            reversed(trajectory_available_actions),
         ):
             G = gamma * G + r
             C[s, a] += W
             Q[s, a] += (W / C[s, a]) * (G - Q[s, a])
 
-            if a != int(np.argmax(Q[s])):
+            if a != restricted_argmax(Q[s], available):
                 break
             W /= b_prob
 
-    pi = np.zeros((num_states, num_actions))
-    pi[np.arange(num_states), np.argmax(Q, axis=1)] = 1.0
+    pi = build_greedy_policy(Q, known_available_actions)
     for s in terminal_states_seen:
         pi[s, :] = 0.0
 

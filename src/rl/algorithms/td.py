@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -16,6 +16,32 @@ def epsilon_greedy_action(env: Environment, Q: np.ndarray, s: int, epsilon: floa
         return int(np.random.choice(available))
     q_available = Q[s, available]
     return int(available[int(np.argmax(q_available))])
+
+
+# Certains environnements (ex: Monty Hall) n'offrent pas les mêmes actions
+# dans tous les états : Q(s, ·) peut donc contenir, pour des actions qui n'y
+# sont en réalité jamais jouables, une valeur d'initialisation aléatoire qui
+# n'a jamais été mise à jour. Ces deux fonctions restreignent le max/argmax
+# aux seules actions réellement disponibles, pour ne jamais s'y laisser
+# piéger.
+def restricted_argmax(q_row: np.ndarray, available: List[int]) -> int:
+    return int(available[int(np.argmax(q_row[available]))])
+
+
+def restricted_max(q_row: np.ndarray, available: List[int]) -> float:
+    return float(np.max(q_row[available]))
+
+
+# Construit la politique gloutonne finale à partir de Q, en ne considérant
+# pour chaque état que les actions qui y ont réellement été vues disponibles
+# pendant l'entraînement (sinon, par défaut, toutes les actions).
+def build_greedy_policy(Q: np.ndarray, known_available_actions: Dict[int, List[int]]) -> np.ndarray:
+    num_states, num_actions = Q.shape
+    pi = np.zeros((num_states, num_actions))
+    for s in range(num_states):
+        available = known_available_actions.get(s, list(range(num_actions)))
+        pi[s, restricted_argmax(Q[s], available)] = 1.0
+    return pi
 
 
 # Sarsa (State-Action-Reward-State-Action) : contrairement aux méthodes Monte
@@ -41,10 +67,12 @@ def sarsa(
 
     Q = np.random.random((num_states, num_actions))
     terminal_states_seen = set()
+    known_available_actions: Dict[int, List[int]] = {}
 
     for _ in range(iterations_count):
         env.reset()
         s = env.current_state()
+        known_available_actions[s] = env.available_actions()
         a = epsilon_greedy_action(env, Q, s, epsilon)
 
         # Même garde-fou que pour les méthodes Monte Carlo : si la politique
@@ -61,14 +89,14 @@ def sarsa(
                 terminal_states_seen.add(s_p)
                 Q[s, a] += alpha * (r - Q[s, a])
             else:
+                known_available_actions[s_p] = env.available_actions()
                 a_p = epsilon_greedy_action(env, Q, s_p, epsilon)
                 Q[s, a] += alpha * (r + gamma * Q[s_p, a_p] - Q[s, a])
                 s, a = s_p, a_p
 
             steps += 1
 
-    pi = np.zeros((num_states, num_actions))
-    pi[np.arange(num_states), np.argmax(Q, axis=1)] = 1.0
+    pi = build_greedy_policy(Q, known_available_actions)
     for s in terminal_states_seen:
         pi[s, :] = 0.0
 
@@ -97,6 +125,7 @@ def q_learning(
 
     Q = np.random.random((num_states, num_actions))
     terminal_states_seen = set()
+    known_available_actions: Dict[int, List[int]] = {}
 
     for _ in range(iterations_count):
         env.reset()
@@ -107,6 +136,7 @@ def q_learning(
         # abandonne l'épisode plutôt que de tourner à l'infini.
         steps = 0
         while not env.is_game_over() and steps < max_steps_per_episode:
+            known_available_actions[s] = env.available_actions()
             a = epsilon_greedy_action(env, Q, s, epsilon)
             prev_score = env.score()
             env.step(a)
@@ -117,13 +147,13 @@ def q_learning(
                 terminal_states_seen.add(s_p)
                 Q[s, a] += alpha * (r - Q[s, a])
             else:
-                Q[s, a] += alpha * (r + gamma * np.max(Q[s_p]) - Q[s, a])
+                known_available_actions[s_p] = env.available_actions()
+                Q[s, a] += alpha * (r + gamma * restricted_max(Q[s_p], known_available_actions[s_p]) - Q[s, a])
 
             s = s_p
             steps += 1
 
-    pi = np.zeros((num_states, num_actions))
-    pi[np.arange(num_states), np.argmax(Q, axis=1)] = 1.0
+    pi = build_greedy_policy(Q, known_available_actions)
     for s in terminal_states_seen:
         pi[s, :] = 0.0
 

@@ -1,8 +1,8 @@
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
-from src.rl.algorithms.td import epsilon_greedy_action
+from src.rl.algorithms.td import build_greedy_policy, epsilon_greedy_action, restricted_max
 from src.rl.envs import Environment
 
 
@@ -31,7 +31,9 @@ def dyna_q(
 
     Q = np.random.random((num_states, num_actions))
     terminal_states_seen = set()
-    model: Dict[Tuple[int, int], Tuple[float, int, bool]] = {}
+    known_available_actions: Dict[int, List[int]] = {}
+    # (s, a) -> (r, s', s' terminal ?, actions disponibles depuis s')
+    model: Dict[Tuple[int, int], Tuple[float, int, bool, List[int]]] = {}
 
     for _ in range(iterations_count):
         env.reset()
@@ -42,31 +44,34 @@ def dyna_q(
         # abandonne l'épisode plutôt que de tourner à l'infini.
         steps = 0
         while not env.is_game_over() and steps < max_steps_per_episode:
+            known_available_actions[s] = env.available_actions()
             a = epsilon_greedy_action(env, Q, s, epsilon)
             prev_score = env.score()
             env.step(a)
             r = env.score() - prev_score
             s_p = env.current_state()
             is_terminal = env.is_game_over()
+            available_at_s_p = [] if is_terminal else env.available_actions()
             if is_terminal:
                 terminal_states_seen.add(s_p)
+            else:
+                known_available_actions[s_p] = available_at_s_p
 
-            target = r if is_terminal else r + gamma * np.max(Q[s_p])
+            target = r if is_terminal else r + gamma * restricted_max(Q[s_p], available_at_s_p)
             Q[s, a] += alpha * (target - Q[s, a])
-            model[(s, a)] = (r, s_p, is_terminal)
+            model[(s, a)] = (r, s_p, is_terminal, available_at_s_p)
 
             known_pairs = list(model.keys())
             for _ in range(planning_steps):
                 ps, pa = known_pairs[np.random.randint(len(known_pairs))]
-                p_r, p_s_p, p_is_terminal = model[(ps, pa)]
-                p_target = p_r if p_is_terminal else p_r + gamma * np.max(Q[p_s_p])
+                p_r, p_s_p, p_is_terminal, p_available = model[(ps, pa)]
+                p_target = p_r if p_is_terminal else p_r + gamma * restricted_max(Q[p_s_p], p_available)
                 Q[ps, pa] += alpha * (p_target - Q[ps, pa])
 
             s = s_p
             steps += 1
 
-    pi = np.zeros((num_states, num_actions))
-    pi[np.arange(num_states), np.argmax(Q, axis=1)] = 1.0
+    pi = build_greedy_policy(Q, known_available_actions)
     for s in terminal_states_seen:
         pi[s, :] = 0.0
 
