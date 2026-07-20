@@ -107,11 +107,26 @@ def _evaluate_policy(
 # plus. 1) Évaluation : calculer V pour la politique actuelle. 2) Amélioration :
 # rendre la politique gloutonne par rapport à ce V. Contrairement à Value
 # Iteration, chaque étape d'évaluation va jusqu'à convergence avant d'améliorer.
+#
+# `max_evaluation_iterations` reste volontairement bas (200, contre 10 000
+# pour Value Iteration) : la toute première politique est tirée au hasard
+# action par action, et peut donc enfermer certains états dans une boucle
+# sans intérêt (ex: un mur qu'on heurte sans arrêt dans Grid World). Avec un
+# gamma aussi proche de 1, évaluer EXACTEMENT une telle politique jusqu'à
+# theta demanderait des millions de passes pour un gain quasi nul, alors
+# qu'une évaluation partielle suffit déjà à repérer la bonne direction et à
+# corriger la politique dès l'étape d'amélioration suivante (vérifié : sur
+# Grid World, converge vers exactement la même valeur que Value Iteration en
+# une fraction de seconde, quel que soit le tirage aléatoire initial).
+# `max_policy_iterations` protège en plus la boucle d'amélioration
+# elle-même : si la politique ne se stabilise jamais, on s'arrête plutôt que
+# de tourner indéfiniment.
 def policy_iteration(
     env: MDPEnvironment,
     gamma: float = 0.999999,
     theta: float = 0.000001,
-    max_evaluation_iterations: int = 10_000,
+    max_evaluation_iterations: int = 200,
+    max_policy_iterations: int = 1_000,
 ) -> Tuple[np.ndarray, np.ndarray]:
     states = env.states()
     actions = env.actions()
@@ -127,7 +142,7 @@ def policy_iteration(
             continue
         pi[s, np.random.randint(len(actions))] = 1.0
 
-    while True:
+    for _ in range(max_policy_iterations):
         _evaluate_policy(env, pi, V, gamma, theta, max_evaluation_iterations)
 
         policy_stable = True

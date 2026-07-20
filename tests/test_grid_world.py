@@ -1,6 +1,6 @@
 import pytest
 
-from src.rl.algorithms.dynamic_programming import value_iteration
+from src.rl.algorithms.dynamic_programming import policy_iteration, value_iteration
 from src.rl.environments.grid_world import DOWN, LEFT, RIGHT, UP, GridWorldEnv
 from src.rl.envs import Environment, ExploringStartsEnvironment, MDPEnvironment
 
@@ -96,3 +96,17 @@ def test_value_iteration_avoids_the_trap_and_reaches_the_goal():
         row, col = env._position(s)
         next_row, next_col = env._next_position(row, col, best_action)
         assert env._state_id(next_row, next_col) != trap_state
+
+
+def test_policy_iteration_agrees_with_value_iteration_on_grid_world():
+    # Régression : la toute première politique de Policy Iteration est
+    # tirée au hasard action par action, et peut donc contenir des actions
+    # qui tapent un mur (boucle sur le même état). Avec gamma proche de 1,
+    # ça doit rester rapide et converger vers exactement la même solution
+    # que Value Iteration, pas tourner indéfiniment.
+    env = GridWorldEnv()
+    pi_pol, V_pol = policy_iteration(env)
+    pi_val, V_val = value_iteration(env)
+
+    assert V_pol[0] == pytest.approx(1.0, abs=1e-3)
+    assert V_pol == pytest.approx(V_val, abs=1e-3)
