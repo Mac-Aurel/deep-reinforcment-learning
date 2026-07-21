@@ -14,7 +14,11 @@ def save_policy(filepath: str, pi: np.ndarray, V: Optional[np.ndarray] = None, Q
         arrays["V"] = V
     if Q is not None:
         arrays["Q"] = Q
-    np.savez(filepath, **arrays)
+    # Compressé : pi est presque toujours creuse (une seule valeur à 1.0 par
+    # état), et certains environnements (les environnements secrets, jusqu'à
+    # plus de 2 millions d'états) donnent des fichiers non compressés bien
+    # trop volumineux sinon.
+    np.savez_compressed(filepath, **arrays)
 
 
 # Recharge une politique sauvegardée par save_policy. Renvoie un dictionnaire
