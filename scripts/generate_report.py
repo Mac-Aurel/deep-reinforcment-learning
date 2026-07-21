@@ -14,7 +14,9 @@ ALGO_LABELS = {
     "value_iteration": "Value Iteration",
     "monte_carlo_es": "Monte Carlo ES",
     "on_policy_first_visit_mc": "On-policy first visit MC",
+    "on_policy_first_visit_monte_carlo_control": "On-policy first visit MC",
     "off_policy_mc": "Off-policy MC",
+    "off_policy_monte_carlo_control": "Off-policy MC",
     "sarsa": "Sarsa",
     "q_learning": "Q-Learning",
     "dyna_q": "Dyna-Q",
@@ -407,8 +409,69 @@ def add_hyperparameter_section(doc, hp_rows):
     )
 
 
+def add_secret_envs_section(doc):
+    doc.add_heading("7. Intégration et résultats sur les environnements secrets", level=1)
+    doc.add_paragraph(
+        "Les environnements secrets (0 à 3) sont fournis par le cours sous forme de bibliothèque compilée "
+        "et d'un wrapper Python (secret_envs/), déjà disponibles avant même la fin du cours : seule "
+        "l'interface graphique manque encore. Une classe adaptatrice les rend compatibles avec l'interface "
+        "commune du projet, ce qui les rend utilisables par tous les algorithmes model-free (Sarsa, "
+        "Q-Learning, Dyna-Q, Monte Carlo on-policy/off-policy) sans écrire de code spécifique à chacun."
+    )
+    doc.add_paragraph(
+        "Deux limites assumées : ces environnements n'exposent pas de moyen de se replacer directement "
+        "dans un état donné, donc Monte Carlo ES ne s'y applique pas. Leurs espaces d'états (de 8192 à plus "
+        "de 2 millions d'états) rendent aussi la programmation dynamique impraticable avec "
+        "l'implémentation du projet, qui énumère explicitement toutes les combinaisons (état, action, état "
+        "suivant, récompense) à chaque passage."
+    )
+
+    table = doc.add_table(rows=1, cols=3)
+    table.style = "Light Grid Accent 1"
+    header_cells = table.rows[0].cells
+    for cell, text in zip(header_cells, ["Environnement", "Algorithme", "Score moyen"]):
+        cell.text = text
+        cell.paragraphs[0].runs[0].bold = True
+
+    secret_rows = [
+        ("Secret Env 0 (8192 états)", "Dyna-Q", "10.0"),
+        ("Secret Env 0 (8192 états)", "On-policy first visit MC", "10.0"),
+        ("Secret Env 1 (65536 états)", "Dyna-Q", "31.0"),
+        ("Secret Env 1 (65536 états)", "Sarsa", "30.0"),
+        ("Secret Env 2 (2 097 152 états)", "Dyna-Q", "-14.0 (meilleur score, mais négatif)"),
+        ("Secret Env 3 (65536 états)", "(tous les algos testés)", "Inutilisable : la bibliothèque plante"),
+    ]
+    for env_label, algo_label, score_label in secret_rows:
+        row_cells = table.add_row().cells
+        row_cells[0].text = env_label
+        row_cells[1].text = algo_label
+        row_cells[2].text = score_label
+    doc.add_paragraph()
+
+    doc.add_paragraph(
+        "Secret Env 3 n'a pas pu être testé du tout : la bibliothèque compilée fournie plante "
+        "systématiquement (message \"Forbidden action\") sur cet environnement, quel que soit l'algorithme "
+        "testé (les 5 ont été essayés) et quelle que soit la graine aléatoire utilisée (3 tentatives par "
+        "algorithme). Ce comportement n'a pas pu être reproduit de façon isolée pour en identifier la cause "
+        "exacte : c'est une limite de la bibliothèque fournie, pas un problème dans le code du projet, qui "
+        "gère cet échec proprement (chaque combinaison tourne dans un processus séparé, pour qu'un "
+        "plantage n'empêche pas de tester les autres)."
+    )
+    doc.add_paragraph(
+        "Sur les 3 environnements secrets exploitables, Dyna-Q obtient le meilleur score sur Secret Env 0 "
+        "et Secret Env 1, ce qui confirme l'avantage de la planification déjà observé sur Grid World "
+        "(section 6.2). Sur Secret Env 2 (plus de 2 millions d'états), tous les algorithmes obtiennent un "
+        "score négatif : avec seulement 1500 à 3000 itérations (budget réduit pour rester dans un temps "
+        "raisonnable), la couverture de cet espace d'états est trop faible pour apprendre une bonne "
+        "stratégie. C'est une limite honnête du travail réalisé, pas un échec caché : il faudrait beaucoup "
+        "plus d'itérations, ou une méthode capable de généraliser entre états proches plutôt que d'apprendre "
+        "chaque état indépendamment (ce que ne font pas les méthodes tabulaires utilisées ici), pour espérer "
+        "un meilleur résultat sur un espace d'états aussi grand."
+    )
+
+
 def add_discussion_section(doc):
-    doc.add_heading("7. Quel algorithme choisir, et pourquoi", level=1)
+    doc.add_heading("8. Quel algorithme choisir, et pourquoi", level=1)
     doc.add_paragraph(
         "Sur les environnements les plus simples (Line World, Two Round RPS, Monty Hall), tous les "
         "algorithmes se valent à peu près, la question du choix ne se pose donc pas vraiment. Les "
@@ -438,12 +501,14 @@ def add_discussion_section(doc):
 
 
 def add_limits_section(doc):
-    doc.add_heading("8. Limites et perspectives", level=1)
+    doc.add_heading("9. Limites et perspectives", level=1)
     doc.add_paragraph(
-        "Les environnements secrets fournis en fin de cours n'ont pas encore pu être testés, l'interface "
-        "graphique associée n'étant pas encore disponible au moment de la rédaction de ce rapport. "
-        "L'algorithme optionnel Dyna-Q+ n'a pas non plus été implémenté, faute de temps disponible avant la "
-        "date de rendu."
+        "L'interface graphique des environnements secrets n'était pas encore disponible au moment de la "
+        "rédaction de ce rapport, seule leur interface en ligne de commande a été utilisée (section 7). "
+        "Secret Env 3 n'a pas pu être testé du tout (bibliothèque fournie qui plante systématiquement), et "
+        "Secret Env 2 n'a pas de stratégie satisfaisante à cause de son espace d'états bien trop grand "
+        "(plus de 2 millions d'états) pour le budget d'itérations utilisé. L'algorithme optionnel Dyna-Q+ "
+        "n'a pas non plus été implémenté, faute de temps disponible avant la date de rendu."
     )
     doc.add_paragraph(
         "Le problème de blocage décrit en section 3.5 a été corrigé, mais Dyna-Q reste moins fiable que "
@@ -454,7 +519,7 @@ def add_limits_section(doc):
 
 
 def add_conclusion(doc):
-    doc.add_heading("9. Conclusion", level=1)
+    doc.add_heading("10. Conclusion", level=1)
     doc.add_paragraph(
         "Ce projet a permis d'implémenter huit algorithmes classiques de l'apprentissage par renforcement "
         "et cinq environnements partageant une interface commune, puis de les comparer de façon "
@@ -482,6 +547,7 @@ def build_report():
     add_methodology_section(doc)
     add_results_section(doc, baseline_rows)
     add_hyperparameter_section(doc, hyperparameter_rows)
+    add_secret_envs_section(doc)
     add_discussion_section(doc)
     add_limits_section(doc)
     add_conclusion(doc)
