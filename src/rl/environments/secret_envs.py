@@ -51,15 +51,18 @@ class SecretEnvAdapter(Environment):
 
             self._env = [SecretEnv0, SecretEnv1, SecretEnv2, SecretEnv3][index]()
 
+    # Redémarre un nouvel épisode (tire une nouvelle configuration cachée côté bibliothèque fournie).
     def reset(self) -> None:
         self._env.reset()
 
+    # Joue l'action donnée ; délègue entièrement les règles à la bibliothèque fournie.
     def step(self, action: int) -> None:
         self._env.step(action)
 
     def is_game_over(self) -> bool:
         return bool(self._env.is_game_over())
 
+    # La bibliothèque fournie nomme cette méthode state_id() plutôt que current_state().
     def current_state(self) -> int:
         return int(self._env.state_id())
 
@@ -75,5 +78,6 @@ class SecretEnvAdapter(Environment):
     def num_actions(self) -> int:
         return int(self._env.num_actions())
 
+    # Pretty print déjà fourni par la bibliothèque, réutilisé tel quel.
     def display(self) -> None:
         self._env.display()

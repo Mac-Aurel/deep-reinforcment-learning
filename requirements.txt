@@ -4,3 +4,4 @@ matplotlib
 python-docx
 pandas
 nbformat
+jupyter
