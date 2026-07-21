@@ -228,7 +228,16 @@ def build():
         "un état donné, donc Monte Carlo ES ne s'y applique pas. Leurs espaces d'états (de 8192 à plus de 2 "
         "millions d'états) rendent aussi la programmation dynamique impraticable avec l'implémentation du "
         "projet, qui énumère explicitement toutes les combinaisons (état, action, état suivant, récompense) "
-        "à chaque passage."
+        "à chaque passage.\n"
+        "\n"
+        "Un vrai bug a été rencontré et corrigé pendant cette phase. `evaluate_policy` et `replay_policy` "
+        "choisissaient l'action gloutonne par un simple argmax sur la politique, sans vérifier que cette "
+        "action était réellement jouable dans l'état courant. Sur les environnements du projet ça ne posait "
+        "jamais de problème, mais sur Secret Env 3 (65536 états), un état jamais visité pendant "
+        "l'entraînement pouvait garder une action par défaut non valide, ce qui faisait planter tout le "
+        "programme au moment de jouer cette action. Ce plantage a d'abord été attribué à tort à la "
+        "bibliothèque fournie, avant d'être identifié comme un bug du code du projet et corrigé. Après "
+        "correction, les 4 environnements secrets et les 5 algorithmes tournent tous sans problème."
     ))
 
     cells.append(code(
@@ -238,23 +247,16 @@ def build():
     ))
 
     cells.append(md(
-        "Secret Env 3 n'apparaît pas dans ce tableau : la bibliothèque compilée fournie plante "
-        "systématiquement (message \"Forbidden action\") sur cet environnement, quel que soit "
-        "l'algorithme testé (les 5 ont été essayés) et quelle que soit la graine aléatoire utilisée (3 "
-        "tentatives par algorithme). Ce comportement n'a pas pu être reproduit de façon isolée pour en "
-        "identifier la cause exacte : c'est une limite de la bibliothèque fournie, pas un problème dans le "
-        "code du projet, qui gère cet échec proprement (chaque combinaison tourne dans un processus séparé, "
-        "pour qu'un plantage n'empêche pas de tester les autres).\n"
-        "\n"
-        "Sur les 3 environnements secrets exploitables, Dyna-Q obtient le meilleur score sur Secret Env 0 "
-        "et Secret Env 1, ce qui confirme l'avantage de la planification déjà observé sur Grid World "
-        "(section 6.2). Sur Secret Env 2 (plus de 2 millions d'états), tous les algorithmes obtiennent un "
-        "score négatif : avec seulement 1500 à 3000 itérations (budget réduit pour rester dans un temps "
-        "raisonnable), la couverture de cet espace d'états est trop faible pour apprendre une bonne "
-        "stratégie. C'est une limite honnête du travail réalisé, pas un échec caché : il faudrait beaucoup "
-        "plus d'itérations, ou une méthode capable de généraliser entre états proches plutôt que d'apprendre "
-        "chaque état indépendamment (ce que ne font pas les méthodes tabulaires utilisées ici), pour espérer "
-        "un meilleur résultat sur un espace d'états aussi grand."
+        "Dyna-Q obtient le meilleur score sur Secret Env 0 et Secret Env 1, ce qui confirme l'avantage de "
+        "la planification déjà observé sur Grid World (section 6.2). Sur Secret Env 3, c'est Sarsa qui "
+        "l'emporte de peu (Dyna-Q reste très proche). Sur Secret Env 2 (plus de 2 millions d'états), tous "
+        "les algorithmes obtiennent un score négatif : avec seulement 1500 à 3000 itérations (budget réduit "
+        "pour rester dans un temps raisonnable), la couverture de cet espace d'états est trop faible pour "
+        "apprendre une bonne stratégie. C'est une limite honnête du travail réalisé, pas un échec caché : il "
+        "faudrait beaucoup plus d'itérations, ou une méthode capable de généraliser entre états proches "
+        "plutôt que d'apprendre chaque état indépendamment, pour espérer un meilleur résultat sur un espace "
+        "d'états aussi grand. Off-policy MC control obtient le score le plus bas des cinq algorithmes sur "
+        "les quatre environnements secrets, comme sur la comparaison de base."
     ))
 
     cells.append(md(
@@ -280,8 +282,7 @@ def build():
         "\n"
         "L'algorithme optionnel Dyna-Q+ n'a pas été implémenté, faute de temps disponible avant la date de "
         "rendu. L'interface graphique des environnements secrets n'était pas encore fournie au moment de la "
-        "rédaction, seule leur interface en ligne de commande a été utilisée. Secret Env 3 n'a pas pu être "
-        "testé du tout (bibliothèque fournie qui plante systématiquement), et Secret Env 2 n'a pas de "
+        "rédaction, seule leur interface en ligne de commande a été utilisée. Secret Env 2 n'a pas de "
         "stratégie satisfaisante à cause de son espace d'états bien trop grand (plus de 2 millions d'états) "
         "pour le budget d'itérations utilisé. Dyna-Q reste moins fiable que les autres méthodes sur Monty "
         "Hall, une piste à creuser serait d'adapter son modèle appris pour mieux gérer les environnements "

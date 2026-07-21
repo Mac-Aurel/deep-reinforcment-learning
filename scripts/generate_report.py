@@ -425,21 +425,33 @@ def add_secret_envs_section(doc):
         "l'implémentation du projet, qui énumère explicitement toutes les combinaisons (état, action, état "
         "suivant, récompense) à chaque passage."
     )
+    doc.add_paragraph(
+        "Un vrai bug a été rencontré et corrigé pendant cette phase. Les fonctions d'évaluation et de "
+        "replay du projet (evaluate_policy, replay_policy) choisissaient l'action gloutonne par un simple "
+        "argmax sur la politique, sans vérifier que cette action était réellement jouable dans l'état "
+        "courant. Sur les environnements du projet, ça ne posait jamais de problème (soit toutes les "
+        "actions sont toujours valides partout, soit l'espace d'états est assez petit pour que "
+        "l'entraînement couvre tous les états). Sur Secret Env 3 (65536 états), un état jamais visité "
+        "pendant l'entraînement pouvait garder une action par défaut non valide pour cet état précis, ce "
+        "qui faisait planter tout le programme au moment de jouer cette action. Ce plantage a d'abord été "
+        "attribué à tort à la bibliothèque fournie, avant d'être identifié comme un bug du code du projet "
+        "et corrigé (l'action gloutonne est maintenant toujours choisie parmi les actions réellement "
+        "disponibles). Après correction, les 4 environnements secrets et les 5 algorithmes tournent tous "
+        "sans problème."
+    )
 
     table = doc.add_table(rows=1, cols=3)
     table.style = "Light Grid Accent 1"
     header_cells = table.rows[0].cells
-    for cell, text in zip(header_cells, ["Environnement", "Algorithme", "Score moyen"]):
+    for cell, text in zip(header_cells, ["Environnement", "Meilleur algorithme", "Score moyen"]):
         cell.text = text
         cell.paragraphs[0].runs[0].bold = True
 
     secret_rows = [
-        ("Secret Env 0 (8192 états)", "Dyna-Q", "10.0"),
-        ("Secret Env 0 (8192 états)", "On-policy first visit MC", "10.0"),
+        ("Secret Env 0 (8192 états)", "Dyna-Q / On-policy first visit MC", "10.0"),
         ("Secret Env 1 (65536 états)", "Dyna-Q", "31.0"),
-        ("Secret Env 1 (65536 états)", "Sarsa", "30.0"),
         ("Secret Env 2 (2 097 152 états)", "Dyna-Q", "-14.0 (meilleur score, mais négatif)"),
-        ("Secret Env 3 (65536 états)", "(tous les algos testés)", "Inutilisable : la bibliothèque plante"),
+        ("Secret Env 3 (65536 états)", "Sarsa", "14.8"),
     ]
     for env_label, algo_label, score_label in secret_rows:
         row_cells = table.add_row().cells
@@ -449,24 +461,17 @@ def add_secret_envs_section(doc):
     doc.add_paragraph()
 
     doc.add_paragraph(
-        "Secret Env 3 n'a pas pu être testé du tout : la bibliothèque compilée fournie plante "
-        "systématiquement (message \"Forbidden action\") sur cet environnement, quel que soit l'algorithme "
-        "testé (les 5 ont été essayés) et quelle que soit la graine aléatoire utilisée (3 tentatives par "
-        "algorithme). Ce comportement n'a pas pu être reproduit de façon isolée pour en identifier la cause "
-        "exacte : c'est une limite de la bibliothèque fournie, pas un problème dans le code du projet, qui "
-        "gère cet échec proprement (chaque combinaison tourne dans un processus séparé, pour qu'un "
-        "plantage n'empêche pas de tester les autres)."
-    )
-    doc.add_paragraph(
-        "Sur les 3 environnements secrets exploitables, Dyna-Q obtient le meilleur score sur Secret Env 0 "
-        "et Secret Env 1, ce qui confirme l'avantage de la planification déjà observé sur Grid World "
-        "(section 6.2). Sur Secret Env 2 (plus de 2 millions d'états), tous les algorithmes obtiennent un "
-        "score négatif : avec seulement 1500 à 3000 itérations (budget réduit pour rester dans un temps "
-        "raisonnable), la couverture de cet espace d'états est trop faible pour apprendre une bonne "
-        "stratégie. C'est une limite honnête du travail réalisé, pas un échec caché : il faudrait beaucoup "
-        "plus d'itérations, ou une méthode capable de généraliser entre états proches plutôt que d'apprendre "
-        "chaque état indépendamment (ce que ne font pas les méthodes tabulaires utilisées ici), pour espérer "
-        "un meilleur résultat sur un espace d'états aussi grand."
+        "Dyna-Q obtient le meilleur score sur Secret Env 0 et Secret Env 1, ce qui confirme l'avantage de "
+        "la planification déjà observé sur Grid World (section 6.2). Sur Secret Env 3, c'est Sarsa qui "
+        "l'emporte de peu, Dyna-Q restant très proche (14.7). Sur Secret Env 2 (plus de 2 millions "
+        "d'états), tous les algorithmes obtiennent un score négatif : avec seulement 1500 à 3000 "
+        "itérations (budget réduit pour rester dans un temps raisonnable), la couverture de cet espace "
+        "d'états est trop faible pour apprendre une bonne stratégie. C'est une limite honnête du travail "
+        "réalisé, pas un échec caché : il faudrait beaucoup plus d'itérations, ou une méthode capable de "
+        "généraliser entre états proches plutôt que d'apprendre chaque état indépendamment (ce que ne font "
+        "pas les méthodes tabulaires utilisées ici), pour espérer un meilleur résultat sur un espace "
+        "d'états aussi grand. Off-policy MC control obtient le score le plus bas des cinq algorithmes sur "
+        "les quatre environnements secrets, comme c'était déjà le cas sur la comparaison de base."
     )
 
 
@@ -505,7 +510,6 @@ def add_limits_section(doc):
     doc.add_paragraph(
         "L'interface graphique des environnements secrets n'était pas encore disponible au moment de la "
         "rédaction de ce rapport, seule leur interface en ligne de commande a été utilisée (section 7). "
-        "Secret Env 3 n'a pas pu être testé du tout (bibliothèque fournie qui plante systématiquement), et "
         "Secret Env 2 n'a pas de stratégie satisfaisante à cause de son espace d'états bien trop grand "
         "(plus de 2 millions d'états) pour le budget d'itérations utilisé. L'algorithme optionnel Dyna-Q+ "
         "n'a pas non plus été implémenté, faute de temps disponible avant la date de rendu."
