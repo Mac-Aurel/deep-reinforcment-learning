@@ -7,7 +7,7 @@ import numpy as np
 from src.rl.algorithms.dynamic_programming import value_iteration
 from src.rl.algorithms.monte_carlo import on_policy_first_visit_monte_carlo_control
 from src.rl.algorithms.planning import dyna_q
-from src.rl.algorithms.td import q_learning, sarsa
+from src.rl.algorithms.td import sarsa
 from src.rl.environments.grid_world import GridWorldEnv
 from src.rl.environments.line_world import LineWorldEnv
 from src.rl.experiment import run_experiment

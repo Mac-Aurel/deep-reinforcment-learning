@@ -1,7 +1,7 @@
 import pytest
 
 from src.rl.algorithms.dynamic_programming import policy_iteration, value_iteration
-from src.rl.environments.grid_world import DOWN, LEFT, RIGHT, UP, GridWorldEnv
+from src.rl.environments.grid_world import LEFT, RIGHT, UP, GridWorldEnv
 from src.rl.envs import Environment, ExploringStartsEnvironment, MDPEnvironment
 
 
