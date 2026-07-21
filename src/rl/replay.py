@@ -2,6 +2,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
+from src.rl.algorithms.td import restricted_argmax
 from src.rl.envs import Environment
 
 
@@ -25,7 +26,7 @@ def replay_policy(
         if pause is not None:
             pause()
         s = env.current_state()
-        a = int(np.argmax(pi[s]))
+        a = restricted_argmax(pi[s], env.available_actions())
         env.step(a)
         env.display()
         steps += 1

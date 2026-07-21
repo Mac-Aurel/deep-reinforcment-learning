@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from src.rl.algorithms.td import restricted_argmax
 from src.rl.envs import Environment
 from src.rl.persistence import build_result_filename, save_policy
 
@@ -27,7 +28,7 @@ def evaluate_policy(
         steps = 0
         while not env.is_game_over() and steps < max_steps_per_episode:
             s = env.current_state()
-            a = int(np.argmax(pi[s]))
+            a = restricted_argmax(pi[s], env.available_actions())
             env.step(a)
             steps += 1
         scores.append(env.score())
