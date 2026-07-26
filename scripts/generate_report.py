@@ -57,7 +57,7 @@ def add_title_page(doc):
 
     names = doc.add_paragraph()
     names.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    names.add_run("Groupe : [noms à compléter]").font.size = Pt(12)
+    names.add_run("Groupe : Mohamed Elyes Bahouri, Mathis Te, Olade Mac-Aurel Laourou Babalekon").font.size = Pt(12)
 
     date = doc.add_paragraph()
     date.alignment = WD_ALIGN_PARAGRAPH.CENTER

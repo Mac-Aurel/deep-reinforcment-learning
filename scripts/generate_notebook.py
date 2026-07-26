@@ -41,7 +41,7 @@ def build():
         "\n"
         "2026-4A-IABD, (Deep) Reinforcement Learning P1\n"
         "\n"
-        "Groupe : [noms à compléter]\n"
+        "Groupe : Mohamed Elyes Bahouri, Mathis Te, Olade Mac-Aurel Laourou Babalekon\n"
     ))
 
     cells.append(md(
