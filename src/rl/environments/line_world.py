@@ -10,12 +10,11 @@ REWARDS = np.array([0.0, -1.0, 1.0])
 
 class LineWorldEnv(ExploringStartsEnvironment, MDPEnvironment):
     """
-    Reprend l'environnement Line World du notebook `notebooks/Line World
-    Experiments.ipynb` : un agent se déplace sur une ligne de `num_cells`
-    cases numérotées de 0 à num_cells - 1. Il part du milieu et choisit à
-    chaque tour d'aller à gauche (action 0) ou à droite (action 1).
-    Atteindre la case 0 termine la partie avec un score de -1, atteindre la
-    dernière case la termine avec un score de +1.
+    Un agent se déplace sur une ligne de `num_cells` cases numérotées de 0 à
+    num_cells - 1. Il part du milieu et choisit à chaque tour d'aller à
+    gauche (action 0) ou à droite (action 1). Atteindre la case 0 termine la
+    partie avec un score de -1, atteindre la dernière case la termine avec
+    un score de +1.
     """
 
     def __init__(self, num_cells: int = 5) -> None:

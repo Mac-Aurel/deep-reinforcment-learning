@@ -68,9 +68,9 @@ def test_transition_probabilities_sum_to_one_for_non_terminal_states():
             assert total == pytest.approx(1.0)
 
 
-def test_transition_probabilities_match_original_notebook_model():
-    # Régression : ces valeurs sont celles codées à la main dans
-    # notebooks/Line World Experiments.ipynb pour LINE_WORLD_LENGTH = 5.
+def test_transition_probabilities_match_expected_values():
+    # Régression : ces transitions ont été vérifiées à la main pour
+    # num_cells = 5, un cas simple où le résultat attendu est connu.
     env = LineWorldEnv(num_cells=5)
     expected_ones = {
         (1, 0, 0, 1),
